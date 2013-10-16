@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Django Settings</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <script src="https://github.com/downloads/gnab/remark/remark-0.4.2.min.js" type="text/javascript">
+      { "highlightStyle": "sunburst" }
+    </script>
+    <style type="text/css" media="screen">
+      @import url(http://fonts.googleapis.com/css?family=Droid+Serif);
+      @import url(http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+
+      body {
+        font-family: 'Droid Serif';
+        font-size: 24px;
+        color: #fff;
+      }
+      a {
+        color: #daa420
+      }
+      h1, h2 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: 400;
+        color: #daa420
+      }
+      h1 {
+        font-size: 3em;
+      }
+      h2 {
+        font-size: 2em;
+      }
+      h3 {
+        color: #fff;
+        font-size: 1.5em;
+      }
+      .slide {
+        background: url(http://subtlepatterns.subtlepatterns.netdna-cdn.com/patterns/debut_dark.png);
+      }
+      .content {
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+class: center
+# Django Form Rendering
+### Jason Peddle
+#### @jwpeddle
+![VM Farms](http://vmfarms.com/static/img/logo.png)
+
+---
+## A form!
+```python
+from django import forms
+
+class ExampleForm(forms.Form):
+
+    like_bananas = forms.TypedChoiceField(
+        label="Do you like bananas?",
+        choices=((1, "Yes"), (0, "No")),
+        coerce=lambda x: bool(int(x)),
+        widget=forms.RadioSelect,
+        initial='1',
+        required=True,
+    )
+
+    favorite_triangle = forms.CharField(
+        label="What is your favorite triangle?",
+        max_length=80,
+        required=True,
+    )
+```
+---
+## Render that form (as a table)
+```django
+<body>
+  <form action="POST">
+    <table>
+      {{ form }}
+    </table>
+  </form>
+</body>
+```
+![Table form](tableform.png)
+##### (Please ignore typo and outdated screenshot)
+---
+## Or paragraphs/list items
+```django
+{{ form.as_p }}
+<ul>
+  {{ form.as_ul }}
+</ul>
+```
+![P form](pform.png)
+![UL form](ulform.png)
+---
+# What about
+### form.as_div?
+# What about
+### form.as_some_custom_layout_my \
+### _designer_insists_we_need?
+---
+## Let's take a look
+```python
+def as_p(self):
+    "Returns this form rendered as HTML <p>s."
+    return self._html_output(
+    normal_row = '<p%(html_class_attr)s>%(label)s '
+                 '%(field)s%(help_text)s</p>',
+        error_row = '%s',
+        row_ender = '</p>',
+        help_text_html = ' <span class="helptext">%s</span>',
+        errors_on_separate_row = True)
+```
+### ...meh
+---
+## django-floppyforms
+* Template-based
+* HTML5 inputs (email, date, number, etc)
+* Replacements for as_p, as_ul, as_table
+##### https://github.com/brutasse/django-floppyforms
+---
+## How to switch to floppyforms:
+```python
+import floppyforms as forms
+
+class ExampleForm(forms.Form):
+    pass
+```
+### Now your forms are floppy. Take a break.
+---
+## Not pretty, but powerful
+#### floppyforms/layouts/p.html
+```django
+{% load floppyforms %}{% block formconfig %}{% formconfig row using "floppyforms/rows/p.html" %}{% endblock %}
+
+{% block forms %}{% for form in forms %}
+{% block errors %}{% if form.non_field_errors or form|hidden_field_errors %}<ul class="errorlist">
+    {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+    {% for error in form|hidden_field_errors %}<li>{{ error }}</li>{% endfor %}
+</ul>{% endif %}{% endblock %}
+{% block rows %}{% for field in form.visible_fields %}
+{% if forloop.last %}{% formconfig row with hidden_fields=form.hidden_fields %}{% endif %}
+{% block row %}{% formrow field %}{% endblock %}
+{% endfor %}
+{% if not form.visible_fields %}{% for field in form.hidden_fields %}{% formfield field %}{% endfor %}{% endif %}
+{% endblock %}
+{% endfor %}{% endblock %}
+```
+---
+#### floppyforms/input.html
+```django
+<input
+  type="{{ type }}"
+  name="{{ name }}"
+  {% if value %} value="{{ value }}"{% endif %}
+  {% if required %} required{% endif %}
+  {% include "floppyforms/attrs.html" %}
+  {% if datalist %} list="{{ attrs.id }}_list"{% endif %}>
+{% if datalist %}
+<datalist id="{{ attrs.id }}_list">
+{% for item in datalist %}
+  <option value="{{ item }}">
+{% endfor %}
+</datalist>
+{% endif %}
+```
+---
+## Templates are fine, but what if I want to render my form programmatically?
+#### Enter django-crispy-forms
+* Template packs (ie Bootstrap, Foundation)
+* Structure form in Python
+##### https://github.com/maraujop/django-crispy-forms
+---
+## With vanilla Django
+```django
+<form class="form-horizontal" method="POST">
+  {{ form.media }}
+  {% if form.errors %}
+  <div class="alert alert-error">
+    <ul>
+      {% for error in form.non_field_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% for field in form.fields %}
+  <div class="control-group {{ field.html_name }} {% if field.errors %}error{% endif %}">
+    <label class="control-label">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+    <div class="controls"> {{ field }}
+      {% if field.errors %}<span class="help-inline">{{ field.errors.as_text }}</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  <div class="form-actions">
+    <input class="btn btn-primary btn-large" type="submit" value="Submit"/>
+  </div>
+</form>
+```
+---
+### floppyforms certainly gives you sensible hooks to implement this, but crispy-forms does the work for you
+---
+## Simple crispy-form bootstrap implementation
+```python
+# settings.py
+
+# uni-form, bootstrap, bootstrap3, foundation
+CRISPY_TEMPLATE_PACK = 'bootstrap'
+```
+```django
+{% load crispy_forms_tags %}
+<body>
+  <form class="form-horizontal" method="POST">
+    {{ form|crispy }}
+  </form>
+</body>
+```
+![Boot form](bootform.png)
+---
+## Back to programmatic forms
+---
+## Instead of the |crispy filter
+## We can use the {% crispy %} tag
+```django
+{% load crispy_forms_tags %}
+<body>
+  {% crispy form %}
+</body>
+```
+#### Note: no form tag/submit button
+---
+FormHelper
+```python
+from django import forms
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import (Layout, Fieldset,
+  Button, ButtonHolder, Submit)
+
+class ExampleForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super(ExampleForm, self).__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.form_id = 'id-example-form'
+        self.helper.form_class = 'form-inline'
+        self.helper.form_method = 'post'
+        self.helper.form_action = 'submit_survey'
+        self.helper.layout = Layout(
+            Fieldset(
+                'Check out this fieldset',
+                'favorite_triangle',
+                'like_bananas',
+            ),
+            ButtonHolder(
+                Submit('submit', 'Submit'),
+                Button('cancel', 'Cancel'),
+            )
+        )
+```
+---
+## Rendered with appropriate tags, action, buttons
+![Boot form2](bootform2.png)
+---
+class: center
+# Questions?
+### @jwpeddle
+http://jwpeddle.github.com/forms-talk/
+    </textarea>
+    <div id="slideshow"></div>
+  </body>
+</html>
