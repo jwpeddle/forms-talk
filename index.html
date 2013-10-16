@@ -83,7 +83,7 @@ class ExampleForm(forms.Form):
 </body>
 ```
 ![Table form](tableform.png)
-##### (Please ignore typo and outdated screenshot)
+##### (Please ignore typo and outdated screenshots)
 ---
 ## Or paragraphs/list items
 ```django
@@ -101,7 +101,10 @@ class ExampleForm(forms.Form):
 ### form.as_some_custom_layout_my \
 ### _designer_insists_we_need?
 ---
-## Let's take a look
+## Often trying to customize a form leads to manually adding all the tags to the template yourself.
+### This means you have to account for fields, labels, errors, hidden fields, etc
+---
+## Reuse/extend as_p? Let's take a look
 ```python
 def as_p(self):
     "Returns this form rendered as HTML <p>s."
@@ -113,7 +116,7 @@ def as_p(self):
         help_text_html = ' <span class="helptext">%s</span>',
         errors_on_separate_row = True)
 ```
-### ...meh
+### Not terribad, but not great either
 ---
 ## django-floppyforms
 * Template-based
@@ -219,8 +222,6 @@ CRISPY_TEMPLATE_PACK = 'bootstrap'
 ```
 ![Boot form](bootform.png)
 ---
-## Back to programmatic forms
----
 ## Instead of the |crispy filter
 ## We can use the {% crispy %} tag
 ```django
@@ -263,7 +264,7 @@ class ExampleForm(forms.Form):
 ![Boot form2](bootform2.png)
 ---
 class: center
-# Questions?
+# Questions (probably from Dimitri)?
 ### @jwpeddle
 http://jwpeddle.github.com/forms-talk/
     </textarea>
